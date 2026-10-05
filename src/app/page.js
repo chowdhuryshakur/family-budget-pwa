@@ -1,25 +1,94 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import useSWR, { mutate } from "swr";
+import { useEffect, useState, useCallback, useRef } from "react";
+import useSWR from "swr";
 import Dashboard from "@/components/Dashboard";
 import ExpenseForm from "@/components/ExpenseForm";
 import HistoryLogView from "@/components/HistoryLogView";
+import LoginForm from "@/components/LoginForm";
 import { setupOnlineListener } from "@/lib/offlineSync";
-import { Wallet, PlusCircle, History, Sparkles, X, WifiOff, CheckCircle2 } from "lucide-react";
+import { showSuccessAlert, showErrorAlert } from "@/lib/swal";
+import { Wallet, PlusCircle, History, Sparkles, X, WifiOff, CheckCircle2, LogOut, Loader2 } from "lucide-react";
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function Home() {
-  const { data, error, isLoading, mutate: revalidate } = useSWR("/api/expenses", fetcher, {
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(null); // null (checking) | true | false
+  const idleTimerRef = useRef(null);
+  const IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes (300,000 ms)
+
+  const { data, error, isLoading, mutate: revalidate } = useSWR(
+    isAuthenticated ? "/api/expenses" : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+    }
+  );
 
   const [activeTab, setActiveTab] = useState("dashboard"); // 'dashboard' | 'add' | 'history'
   const [showAddModal, setShowAddModal] = useState(false);
   const [isOffline, setIsOffline] = useState(false);
   const [syncToast, setSyncToast] = useState(null);
+
+  // Verify authentication session
+  const checkSession = useCallback(async () => {
+    try {
+      const res = await fetch("/api/auth/session");
+      const json = await res.json();
+      setIsAuthenticated(json.authenticated);
+      if (json.authenticated && revalidate) {
+        revalidate();
+      }
+    } catch {
+      setIsAuthenticated(false);
+    }
+  }, [revalidate]);
+
+  useEffect(() => {
+    checkSession();
+  }, [checkSession]);
+
+  // Handle Logout (manual or idle timeout)
+  const handleLogout = useCallback(async (isIdle = false) => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Logout error:", e);
+    }
+    setIsAuthenticated(false);
+
+    if (isIdle) {
+      showErrorAlert(
+        "Session Expired",
+        "You have been automatically logged out after 5 minutes of inactivity for your security."
+      );
+    } else {
+      showSuccessAlert("Logged Out", "You have locked your budget application.");
+    }
+  }, []);
+
+  // 5-Minute Inactivity Idle Listener
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const resetIdleTimer = () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(() => {
+        handleLogout(true);
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    const activityEvents = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    activityEvents.forEach((evt) => window.addEventListener(evt, resetIdleTimer));
+
+    resetIdleTimer();
+
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      activityEvents.forEach((evt) => window.removeEventListener(evt, resetIdleTimer));
+    };
+  }, [isAuthenticated, handleLogout]);
 
   // Monitor online/offline status and setup automatic IndexedDB background sync
   useEffect(() => {
@@ -80,6 +149,23 @@ export default function Home() {
     revalidate();
   };
 
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-400" />
+        <span className="text-xs text-slate-400 font-semibold">Verifying Session...</span>
+      </div>
+    );
+  }
+
+  if (isAuthenticated === false) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100">
+        <LoginForm onLoginSuccess={checkSession} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-slate-950">
       {/* Offline Status & Sync Notifications */}
@@ -119,10 +205,18 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs px-3 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+              className="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs px-3 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4" />
               <span className="hidden min-[360px]:inline">Add Expense</span>
+            </button>
+            <button
+              onClick={() => handleLogout(false)}
+              className="bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 font-semibold text-xs px-2.5 py-2 rounded-xl flex items-center gap-1.5 transition-all active:scale-95 shrink-0 cursor-pointer"
+              title="Lock / Logout"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>

@@ -216,6 +216,9 @@ export async function getExpenses() {
       return 0;
     });
 
+    const totalSpent = sortedExpenses.reduce((sum, item) => sum + item.amount, 0);
+    const remainingBalance = totalBudget - totalSpent;
+
     return {
       isDemo: false,
       expenses: sortedExpenses,

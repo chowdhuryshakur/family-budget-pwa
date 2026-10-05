@@ -1,8 +1,18 @@
 import { getExpenses, appendExpense, updateExpense, deleteExpense } from "@/lib/googleSheets";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+
+async function checkAuth() {
+  const cookieStore = await cookies();
+  const session = cookieStore.get("budget_auth_session")?.value;
+  return session === "authenticated";
+}
 
 export async function GET() {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: "Unauthorized access. Please log in." }, { status: 401 });
+    }
     const data = await getExpenses();
     return NextResponse.json(data);
   } catch (error) {
@@ -15,6 +25,9 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: "Unauthorized access. Please log in." }, { status: 401 });
+    }
     const body = await request.json();
     const { date, category, note, amount } = body;
 
@@ -37,6 +50,9 @@ export async function POST(request) {
 
 export async function PUT(request) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: "Unauthorized access. Please log in." }, { status: 401 });
+    }
     const body = await request.json();
     const { id, date, category, note, amount } = body;
 
@@ -59,6 +75,9 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   try {
+    if (!(await checkAuth())) {
+      return NextResponse.json({ error: "Unauthorized access. Please log in." }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     let id = searchParams.get("id");
 
