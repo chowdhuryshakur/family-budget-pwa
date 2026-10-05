@@ -4,7 +4,14 @@ import { cookies } from "next/headers";
 export async function POST(req) {
   try {
     const { password } = await req.json();
-    const validPassword = process.env.APP_PASSWORD || "1234";
+    const validPassword = process.env.APP_PASSWORD;
+
+    if (!validPassword) {
+      return NextResponse.json(
+        { error: "APP_PASSWORD environment variable is not configured." },
+        { status: 500 }
+      );
+    }
 
     if (!password || String(password).trim() !== String(validPassword).trim()) {
       return NextResponse.json(

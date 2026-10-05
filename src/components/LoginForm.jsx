@@ -77,7 +77,7 @@ export default function LoginForm({ onLoginSuccess }) {
                 type={showPassword ? "text" : "password"}
                 required
                 autoFocus
-                placeholder="Enter 4-digit PIN or password"
+                placeholder="Enter PIN or Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 text-white font-bold text-base sm:text-lg rounded-2xl pl-4 pr-11 py-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all placeholder:text-slate-600 placeholder:font-normal placeholder:text-sm"
@@ -111,10 +111,6 @@ export default function LoginForm({ onLoginSuccess }) {
             )}
           </button>
         </form>
-
-        <div className="pt-2 text-center text-[11px] text-slate-500 border-t border-slate-800/60">
-          Default PIN is <code className="text-emerald-400 font-bold">1234</code>. Set <code className="text-slate-300 font-mono">APP_PASSWORD</code> in environment variables to customize.
-        </div>
       </div>
     </div>
   );
