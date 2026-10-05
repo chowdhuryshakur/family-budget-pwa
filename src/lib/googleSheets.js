@@ -209,12 +209,16 @@ export async function getExpenses() {
       })
       .filter((item) => item.amount > 0);
 
-    const totalSpent = expenses.reduce((sum, item) => sum + item.amount, 0);
-    const remainingBalance = totalBudget - totalSpent;
+    // Sort expenses strictly date-wise descending (latest date on top)
+    const sortedExpenses = [...expenses].sort((a, b) => {
+      const dateDiff = (b.date || "").localeCompare(a.date || "");
+      if (dateDiff !== 0) return dateDiff;
+      return 0;
+    });
 
     return {
       isDemo: false,
-      expenses: [...expenses].reverse(),
+      expenses: sortedExpenses,
       plannedItems,
       categoryLimits,
       categories,

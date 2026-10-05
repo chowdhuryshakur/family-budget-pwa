@@ -1,8 +1,8 @@
 "use client";
 
 import { getCategoryIcon } from "@/lib/constants";
-import { RefreshCw, Wallet, ArrowDownRight, PieChart, TrendingUp, AlertCircle, Calendar, Tag, ChevronDown, ChevronUp, Layers, Edit3, Trash2, X, CheckCircle2, Loader2, Filter, History } from "lucide-react";
-import { useState } from "react";
+import { RefreshCw, Wallet, ArrowDownRight, PieChart, TrendingUp, AlertCircle, Calendar, Tag, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Layers, Edit3, Trash2, X, CheckCircle2, Loader2, Filter, History } from "lucide-react";
+import { useState, useEffect } from "react";
 import { confirmDeleteExpense, showSuccessAlert, showErrorAlert } from "@/lib/swal";
 
 export default function Dashboard({
@@ -16,6 +16,13 @@ export default function Dashboard({
   const currentMonthStr = new Date().toISOString().substring(0, 7); // YYYY-MM
   const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [showCategoryBreakdown, setShowCategoryBreakdown] = useState(true);
+  const [dashPage, setDashPage] = useState(1);
+  const DASH_PAGE_SIZE = 8;
+
+  // Reset pagination on month change
+  useEffect(() => {
+    setDashPage(1);
+  }, [selectedMonth]);
 
   const [editingExpense, setEditingExpense] = useState(null);
   const [editAmount, setEditAmount] = useState("");
@@ -38,6 +45,19 @@ export default function Dashboard({
     if (!item.date) return true;
     return item.date.startsWith(selectedMonth);
   });
+
+  // Sort expenses date-wise descending (latest date on top)
+  const sortedExpenses = [...filteredExpenses].sort((a, b) => {
+    const dateDiff = (b.date || "").localeCompare(a.date || "");
+    if (dateDiff !== 0) return dateDiff;
+    return (b.id || "").localeCompare(a.id || "");
+  });
+
+  const totalDashPages = Math.max(1, Math.ceil(sortedExpenses.length / DASH_PAGE_SIZE));
+  const currentDashExpenses = sortedExpenses.slice(
+    (dashPage - 1) * DASH_PAGE_SIZE,
+    dashPage * DASH_PAGE_SIZE
+  );
 
   const totalBudget = data?.totalBudget || 50000;
   const totalSpent = filteredExpenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -454,13 +474,13 @@ export default function Dashboard({
           </button>
         </div>
 
-        {filteredExpenses.length === 0 ? (
+        {sortedExpenses.length === 0 ? (
           <div className="text-center py-10 text-slate-500 text-xs sm:text-sm">
             No expenses recorded for {selectedMonth}.
           </div>
         ) : (
           <div className="space-y-2.5 sm:space-y-3">
-            {filteredExpenses.map((item) => {
+            {currentDashExpenses.map((item) => {
               const displayName = item.itemName || item.note || item.category;
 
               return (
@@ -480,7 +500,7 @@ export default function Dashboard({
                         <span className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 truncate">
                           {item.category}
                         </span>
-                        <span className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1 shrink-0">
+                        <span className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1 shrink-0 whitespace-nowrap">
                           <Calendar className="w-3 h-3 text-slate-500" />
                           {item.date}
                         </span>
@@ -490,7 +510,7 @@ export default function Dashboard({
 
                   {/* Actions & Amount */}
                   <div className="flex items-center gap-3 shrink-0 pl-2">
-                    <p className="text-sm sm:text-base font-bold text-rose-400">
+                    <p className="text-sm sm:text-base font-bold text-rose-400 whitespace-nowrap">
                       -৳{Number(item.amount).toLocaleString()}
                     </p>
 
@@ -498,14 +518,14 @@ export default function Dashboard({
                     <div className="flex items-center gap-1 border-l border-slate-800 pl-2">
                       <button
                         onClick={() => handleOpenEdit(item)}
-                        className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-all"
+                        className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                         title="Edit Expense Entry"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(item.id, displayName)}
-                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all"
+                        className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all cursor-pointer"
                         title="Delete Expense Entry"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -515,6 +535,35 @@ export default function Dashboard({
                 </div>
               );
             })}
+
+            {/* Pagination Controls for Dashboard History */}
+            {sortedExpenses.length > 0 && totalDashPages > 1 && (
+              <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-800/80 text-xs text-slate-400">
+                <span className="font-semibold text-[11px]">
+                  Showing {(dashPage - 1) * DASH_PAGE_SIZE + 1}–{Math.min(dashPage * DASH_PAGE_SIZE, sortedExpenses.length)} of {sortedExpenses.length} records
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setDashPage((p) => Math.max(p - 1, 1))}
+                    disabled={dashPage === 1}
+                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-slate-200 font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Prev
+                  </button>
+                  <span className="px-2 py-0.5 bg-slate-950 border border-slate-800 rounded-lg text-emerald-400 font-bold text-xs">
+                    {dashPage} / {totalDashPages}
+                  </span>
+                  <button
+                    onClick={() => setDashPage((p) => Math.min(p + 1, totalDashPages))}
+                    disabled={dashPage === totalDashPages}
+                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl text-slate-200 font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+                  >
+                    Next <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

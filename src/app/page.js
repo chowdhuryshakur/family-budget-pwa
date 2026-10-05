@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import useSWR, { mutate } from "swr";
 import Dashboard from "@/components/Dashboard";
 import ExpenseForm from "@/components/ExpenseForm";
+import HistoryLogView from "@/components/HistoryLogView";
 import { setupOnlineListener } from "@/lib/offlineSync";
 import { Wallet, PlusCircle, History, Sparkles, X, WifiOff, CheckCircle2 } from "lucide-react";
 
@@ -151,38 +152,13 @@ export default function Home() {
         )}
 
         {activeTab === "history" && (
-          <div className="bg-slate-900 border border-slate-800/80 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
-            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              <History className="w-5 h-5 text-emerald-400 shrink-0" />
-              All Expense Records
-            </h2>
-            {data?.expenses && data.expenses.length > 0 ? (
-              <div className="space-y-2.5 sm:space-y-3">
-                {data.expenses.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-slate-950 border border-slate-800/60 p-3 sm:p-3.5 rounded-2xl flex items-center justify-between gap-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-xs sm:text-sm text-slate-100 truncate">
-                        {item.itemName || item.note || item.category}
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5 truncate">
-                        {item.category} • {item.date}
-                      </p>
-                    </div>
-                    <span className="font-bold text-rose-400 text-sm sm:text-base shrink-0 pl-2">
-                      -৳{Number(item.amount).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs sm:text-sm text-slate-500 text-center py-8">
-                {isLoading ? "Loading expenses..." : "No expense entries found."}
-              </p>
-            )}
-          </div>
+          <HistoryLogView
+            data={data}
+            isLoading={isLoading}
+            onUpdateExpense={handleUpdateExpense}
+            onDeleteExpense={handleDeleteExpense}
+            onOpenAddModal={() => setShowAddModal(true)}
+          />
         )}
       </main>
 
